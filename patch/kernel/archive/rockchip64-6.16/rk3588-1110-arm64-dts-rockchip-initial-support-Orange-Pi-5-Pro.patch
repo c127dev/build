@@ -1,0 +1,353 @@
+From b77f5963e85a0b0c7c346c812558894488d7920e Mon Sep 17 00:00:00 2001
+From: c127dev <contact@c127.dev>
+Date: Fri, 27 Jun 2025 15:38:35 -0500
+Subject: [PATCH] board: rockchip: Initial support for Orange Pi 5 Pro
+
+Add the initial Device Tree file to support the Xunlong
+Orange Pi 5 Pro board. This board is based on the Rockchip
+RK3588S SoC.
+
+This patch enables PCIe Eth and WiFi and disables the unused GMAC1.
+
+Signed-off-by: c127dev <contact@c127.dev>
+---
+ .../dts/rockchip/rk3588s-orangepi-5-pro.dts   | 289 ++++++++++++++++++
+ .../boot/dts/rockchip/rk3588s-orangepi-5.dtsi |   4 +
+ 2 files changed, 293 insertions(+)
+ create mode 100644 arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-pro.dts
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-pro.dts b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-pro.dts
+new file mode 100644
+index 0000000000..3cef3d4333
+--- /dev/null
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5-pro.dts
+@@ -0,0 +1,289 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++
++/dts-v1/;
++
++#include "rk3588s-orangepi-5.dtsi"
++
++/ {
++	model = "Xunlong Orange Pi 5 Pro";
++	compatible = "xunlong,orangepi-5-pro", "rockchip,rk3588s";
++
++	vcc3v3_pcie20: regulator-vcc3v3-pcie20 {
++		compatible = "regulator-fixed";
++		enable-active-high;
++		gpios = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
++		regulator-name = "vcc3v3_pcie20";
++		regulator-boot-on;
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		startup-delay-us = <50000>;
++		vin-supply = <&vcc5v0_sys>;
++	};
++
++	vcc3v3_pcie_eth: vcc3v3-pcie-eth {
++		compatible = "regulator-fixed";
++		regulator-name = "vcc3v3_pcie_eth";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-boot-on;
++		regulator-always-on;
++		enable-active-high;
++		gpios = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
++		vin-supply = <&vcc_3v3_s3>;
++	};
++
++	sdio_pwrseq: sdio-pwrseq {
++		compatible = "mmc-pwrseq-simple";
++		clocks = <&hym8563>;
++		clock-names = "ext_clock";
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_enable_h>;
++		post-power-on-delay-ms = <200>;
++		reset-gpios = <&gpio0 RK_PD0 GPIO_ACTIVE_LOW>;
++	};
++
++	wireless_bluetooth: wireless-bluetooth {
++		compatible = "bluetooth-platdata";
++		clocks = <&hym8563>;
++		clock-names = "ext_clock";
++		uart_rts_gpios = <&gpio3 RK_PD2 GPIO_ACTIVE_LOW>;
++		pinctrl-names = "default", "rts_gpio";
++		pinctrl-0 = <&uart9m2_rtsn>,  <&bt_reset_gpio>, <&bt_wake_gpio>, <&bt_irq_gpio>;
++		pinctrl-1 = <&uart9_gpios>;
++		BT,reset_gpio    = <&gpio0 RK_PD5 GPIO_ACTIVE_HIGH>;
++		BT,wake_gpio     = <&gpio0 RK_PC6 GPIO_ACTIVE_HIGH>;
++		BT,wake_host_irq = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
++		status = "okay";
++	};
++
++	wireless_wlan: wireless-wlan {
++		compatible = "wlan-platdata";
++		wifi_chip_type = "ap6256";
++		pinctrl-names = "default";
++		pinctrl-0 = <&wifi_host_wake_irq>;
++		WIFI,host_wake_irq = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
++		WIFI,poweren_gpio = <&gpio0 RK_PD0 GPIO_ACTIVE_HIGH>;
++		status = "okay";
++	};
++
++	dp_en: dp-en {
++		compatible = "regulator-fixed";
++		regulator-name = "dp_en";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		enable-active-high;
++		regulator-boot-on;
++		regulator-always-on;
++		gpios = <&gpio3 RK_PC2 GPIO_ACTIVE_HIGH>;
++		vin-supply = <&vcc_3v3_s3>;
++	};
++
++	/delete-node/ pwm-leds;
++	pwm-leds {
++        compatible = "pwm-leds";
++
++        led-g {
++            color = <LED_COLOR_ID_GREEN>;
++            function = LED_FUNCTION_STATUS;
++            linux,default-trigger = "heartbeat";
++            max-brightness = <255>;
++            pwms = <&pwm3 0 25000 0>; //Blue LED: pwm15
++        };
++
++		led-b {
++            color = <LED_COLOR_ID_BLUE>;
++            function = LED_FUNCTION_STATUS;
++            linux,default-trigger = "none";
++            max-brightness = <255>;
++            pwms = <&pwm15 0 25000 0>;
++        };
++    };
++	/delete-node/ analog-sound;
++	analog-sound {
++		compatible = "simple-audio-card";
++		pinctrl-names = "default";
++		pinctrl-0 = <&hp_detect>;
++		simple-audio-card,name = "rockchip,es8388";
++		simple-audio-card,bitclock-master = <&masterdai>;
++		simple-audio-card,format = "i2s";
++		simple-audio-card,frame-master = <&masterdai>;
++		simple-audio-card,hp-det-gpios = <&gpio1 RK_PD5 GPIO_ACTIVE_LOW>;
++		simple-audio-card,mclk-fs = <256>;
++		simple-audio-card,pin-switches = "Headphones";
++		simple-audio-card,routing =
++			"Headphones", "LOUT1",
++			"Headphones", "ROUT1",
++			"LINPUT1", "Microphone Jack",
++			"RINPUT1", "Microphone Jack",
++			"LINPUT2", "Onboard Microphone",
++			"RINPUT2", "Onboard Microphone";
++		simple-audio-card,widgets =
++			"Microphone", "Microphone Jack",
++			"Microphone", "Onboard Microphone",
++			"Headphone", "Headphones";
++
++		simple-audio-card,cpu {
++			sound-dai = <&i2s2_2ch>;
++		};
++
++		masterdai: simple-audio-card,codec {
++			sound-dai = <&es8388>;
++			system-clock-frequency = <12288000>;
++		};
++	};
++};
++
++&pinctrl {
++	sdio-pwrseq {
++		wifi_enable_h: wifi-enable-h {
++			rockchip,pins = <0 RK_PD0 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++	};
++	wireless-bluetooth {
++		uart9_gpios: uart7-gpios {
++			rockchip,pins = <3 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		bt_reset_gpio: bt-reset-gpio {
++			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		bt_wake_gpio: bt-wake-gpio {
++			rockchip,pins = <0 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
++		};
++
++		bt_irq_gpio: bt-irq-gpio {
++			rockchip,pins = <0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_down>;
++		};
++	};
++
++	wireless-wlan {
++		wifi_host_wake_irq: wifi-host-wake-irq {
++			rockchip,pins = <0 RK_PA0 RK_FUNC_GPIO &pcfg_pull_down>;
++		};
++	};
++};
++
++&pcie2x1l1 {
++	reset-gpios = <&gpio4 RK_PA2 GPIO_ACTIVE_HIGH>;
++	status = "okay";
++};
++
++&pcie2x1l2 {
++	reset-gpios = <&gpio3 RK_PD1 GPIO_ACTIVE_HIGH>;
++	vpcie3v3-supply = <&vcc3v3_pcie20>;
++	status = "okay";
++};
++
++&sfc {
++	status = "okay";
++};
++
++&gmac1 {
++	status = "disabled";
++};
++
++&sdio {
++	max-frequency = <150000000>;
++	no-sd;
++	no-mmc;
++	bus-width = <4>;
++	disable-wp;
++	cap-sd-highspeed;
++	cap-sdio-irq;
++	keep-power-in-suspend;
++	mmc-pwrseq = <&sdio_pwrseq>;
++	non-removable;
++	pinctrl-names = "default";
++	pinctrl-0 = <&sdiom1_pins>;
++	sd-uhs-sdr104;
++	status = "okay";
++};
++
++&uart9 {
++	status = "okay";
++	pinctrl-0 = <&uart9m2_xfer &uart9m2_ctsn>;
++};
++
++&pwm0 {
++	status = "disabled";
++};
++
++&pwm3 {
++	pinctrl-0 = <&pwm3m2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&pwm15 {
++	pinctrl-0 = <&pwm15m2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&vbus_typec {
++	status = "disabled";
++};
++
++/*
++&usbc0 {
++	status = "disabled";
++};
++*/
++
++&usb_host0_xhci {
++	status = "okay";
++	dr_mode = "host";
++	extcon = <&u2phy0>;
++};
++
++&i2s2_2ch {
++	status = "okay";
++
++	rockchip,i2s-tx-route = <3 2 1 0>;
++	rockchip,i2s-rx-route = <1 3 2 0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2s2m1_sclk
++	             &i2s2m1_mclk
++	             &i2s2m1_lrck
++	             &i2s2m1_sdi
++	             &i2s2m1_sdo>;
++};
++
++&i2s1_8ch {
++	status = "disabled";
++};
++
++&i2c2 {
++	status = "okay";
++};
++
++&i2c3 {
++	status = "okay";
++
++	es8388: audio-codec@11 {
++		compatible = "everest,es8388", "everest,es8328";
++		reg = <0x11>;
++		clocks = <&cru I2S2_2CH_MCLKOUT>;
++		AVDD-supply = <&vcc_3v3_s0>;
++		DVDD-supply = <&vcc_1v8_s0>;
++		HPVDD-supply = <&vcc_3v3_s0>;
++		PVDD-supply = <&vcc_3v3_s0>;
++		assigned-clocks = <&cru I2S2_2CH_MCLKOUT>;
++		assigned-clock-rates = <12288000>;
++		#sound-dai-cells = <0>;
++		status = "okay";
++	};
++};
++
++&hdmi0_sound {
++	simple-audio-card,cpu {
++		sound-dai = <&i2s5_8ch>;
++	};
++};
++
++/*
++&edp0 {
++	status = "okay";
++};
++*/
+\ No newline at end of file
+diff --git a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5.dtsi b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5.dtsi
+index 4fedc50cce..bb14b778d3 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3588s-orangepi-5.dtsi
+@@ -34,6 +34,7 @@ button-recovery {
+ 		};
+ 	};
+ 
++	/*
+ 	analog-sound {
+ 		compatible = "simple-audio-card";
+ 		pinctrl-names = "default";
+@@ -66,6 +67,7 @@ masterdai: simple-audio-card,codec {
+ 			system-clock-frequency = <12288000>;
+ 		};
+ 	};
++	*/
+ 
+ 	hdmi0-con {
+ 		compatible = "hdmi-connector";
+@@ -271,6 +273,7 @@ &i2c6 {
+ 	pinctrl-0 = <&i2c6m3_xfer>;
+ 	status = "okay";
+ 
++	/*
+ 	es8388: audio-codec@10 {
+ 		compatible = "everest,es8388", "everest,es8328";
+ 		reg = <0x10>;
+@@ -283,6 +286,7 @@ es8388: audio-codec@10 {
+ 		assigned-clock-rates = <12288000>;
+ 		#sound-dai-cells = <0>;
+ 	};
++	*/
+ 
+ 	usbc0: usb-typec@22 {
+ 		compatible = "fcs,fusb302";
+-- 
+2.50.0
+
