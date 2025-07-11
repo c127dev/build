@@ -1,7 +1,7 @@
 From d23622e93923850cae54c407f7a96aeb732e3520 Mon Sep 17 00:00:00 2001
 From: c127dev <contact@c127.dev>
 Date: Fri, 27 Jun 2025 13:29:50 -0500
-Subject: [PATCH] board: rockchip: Initial support for Orange Pi 5 Pro for
+Subject: [PATCH 1/2] board: rockchip: Initial support for Orange Pi 5 Pro for
  v2024.04
 
 ---
@@ -817,6 +817,52 @@ index e23ca4231cc..df237da2dfa 100644
       - Xunlong Orange Pi 5 Plus (orangepi-5-plus-rk3588)
  
  * rv1108
+-- 
+2.50.0
+
+
+From 00da8d32e2b8067871aea22d2633750ed9a4e446 Mon Sep 17 00:00:00 2001
+From: c127dev <contact@c127.dev>
+Date: Fri, 11 Jul 2025 18:33:12 -0500
+Subject: [PATCH 2/2] Orange Pi 5 Pro: U-Boot eMMC Patch
+
+Added sdhci interface to recognize eMMC (Experimental)
+---
+ arch/arm/dts/rk3588s-orangepi-5-pro.dts | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/dts/rk3588s-orangepi-5-pro.dts b/arch/arm/dts/rk3588s-orangepi-5-pro.dts
+index 544272dfb61..fa58cef5f75 100644
+--- a/arch/arm/dts/rk3588s-orangepi-5-pro.dts
++++ b/arch/arm/dts/rk3588s-orangepi-5-pro.dts
+@@ -14,7 +14,8 @@
+ 
+ 	aliases {
+ 		ethernet0 = &gmac1;
+-		mmc0 = &sdmmc;
++		mmc0 = &sdhci;
++		mmc1 = &sdmmc;
+ 	};
+ 
+ 	chosen {
+@@ -270,6 +271,17 @@
+ 	status = "okay";
+ };
+ 
++&sdhci {
++	bus-width = <8>;
++	no-sdio;
++	no-sd;
++	non-removable;
++	max-frequency = <200000000>;
++	mmc-hs400-1_8v;
++	mmc-hs400-enhanced-strobe;
++	status = "okay";
++};
++
+ &sdmmc {
+ 	bus-width = <4>;
+ 	cap-sd-highspeed;
 -- 
 2.50.0
 
